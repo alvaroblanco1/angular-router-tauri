@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16
+      - name: Install default stable with clippy and rustfmt
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: default
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: install webkit2gtk (ubuntu only)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install libwebkit2gtk-4.0-dev \
+            build-essential \
+            curl \
+            wget \
+            libssl-dev \
+            libgtk-3-dev \
+            libappindicator3-dev \
+            librsvg2-dev
+      - name: build it
+        working-directory: ./app
+        run: npm install && ng build && npmtauri build
+      - uses: actions/upload-artifact@v3
+        if: matrix.platform == 'ubuntu-latest'
+        with:
+          name: linux-artifact
+          path: |
+            ./target/release/bundle/appimage/app*.AppImage
+            ./target/release/app
+      - uses: actions/upload-artifact@v3
+        if: matrix.platform == 'windows-latest'
+        with:
+          name: windows-artifact
+          path: |
+            ./target/release/bundle/msi/app*.msi
+            ./target/release/app.exe
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: linux-artifact
+      - uses: actions/download-artifact@v3
+        with:
+          name: windows-artifact
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Build"
+          files: |
+            ./app
+            ./**/app*.AppImage
+            ./**/app*.msi
+            ./app.exe
