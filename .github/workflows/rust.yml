@@ -48,15 +48,15 @@ jobs:
         with:
           name: linux-artifact
           path: |
-            ./target/release/bundle/appimage/app*.AppImage
-            ./target/release/app
+            ./app/src-tauri/target/release/bundle/appimage/app*.AppImage
+            ./app/src-tauri/target/release/app
       - uses: actions/upload-artifact@v3
         if: matrix.platform == 'windows-latest'
         with:
           name: windows-artifact
           path: |
-            ./target/release/bundle/msi/app*.msi
-            ./target/release/app.exe
+            ./app/src-tauri/target/release/bundle/msi/app*.msi
+            ./app/src-tauri/target/release/app.exe
   publish:
     needs: build
     runs-on: ubuntu-latest
